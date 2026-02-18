@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Conti Train Board</title>
+
+<style>
+body{margin:0;padding:0;background:#000;color:#ffb000;font-family:"Courier New",monospace;font-size:16px}
+input,button{font-family:"Courier New",monospace;font-size:16px;margin:5px;padding:6px;background:#000;color:#ffb000;border:1px solid #ffb000}
+button:hover{background:#111;cursor:pointer}
+.banner{background:#0000ff;color:#ffb000;text-align:center;font-weight:bold;padding:6px;letter-spacing:1px}
+.subtle{color:#00ff00;text-align:center;margin:6px}
+#boardContainer{border-top:2px solid #ffb000;border-bottom:2px solid #ffb000}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px;border-bottom:1px solid #222}
+th{border-bottom:2px solid #ffb000}
+.destination{color:#00ffff}
+.status-on{color:#00ff00}
+.status-warn{color:#ff0000}
+.expandable{cursor:pointer}
+.expandable:hover{background:#111}
+.stop-details{background:#111;color:#00ffff}
+.highlight{background:#550000;color:#ff0000;font-weight:bold}
+</style>
+</head>
+
+<body>
+<div class="banner">CONTI TRAIN BOARD</div>
+<div class="subtle" id="statusLine">Loading live data…</div>
+
+<div>
+<input id="stationInput" placeholder="Station name (e.g. Wallington)">
+<button onclick="showDepartures()">Show Departures</button>
+</div>
+
+<div>
+<input id="preferredDest" placeholder="Preferred destination">
+<input id="preferredTime" placeholder="Time HH:MM">
+<button onclick="setPreferredTrain()">Set Alert</button>
+</div>
+
+<div id="boardContainer">
+<table id="departureTable"></table>
+</div>
+
+<script>
+const APP_ID="9aa3a09a";
+const APP_KEY="c72f2155c9d5ac0c83b0bf6793b66aff";
+const DEFAULT_STATION="Wallington";
+
+let PREFERRED_TRAIN={destination:"",aimed_departure_time:""};
+
+function setPreferredTrain(){
+PREFERRED_TRAIN.destination=document.getElementById("preferredDest").value.trim();
+PREFERRED_TRAIN.aimed_departure_time=document.getElementById("preferredTime").value.trim();
+alert("Preferred train set!");
+}
+
+async function lookupCRS(name){
+const url=`https://transportapi.com/v3/uk/train/stations/name.json?query=${encodeURIComponent(name)}&app_id=${APP_ID}&app_key=${APP_KEY}`;
+const res=await fetch(url);
+const data=await res.json();
+if(data.stations && data.stations.length>0)return data.stations[0].station_code;
+alert("Station not found");return null;
+}
+
+async function showDepartures(){
+const name=document.getElementById("stationInput").value||DEFAULT_STATION;
+document.getElementById("statusLine").innerText="Fetching departures for "+name+"…";
+const crs=await lookupCRS(name);
+if(!crs)return;
+
+const url=`https://transportapi.com/v3/uk/train/station/${crs}/live.json?app_id=${APP_ID}&app_key=${APP_KEY}`;
+const res=await fetch(url);
+const data=await res.json();
+renderDepartures(data.departures.all,name);
+}
+
+function renderDepartures(trains,station){
+const table=document.getElementById("departureTable");
+table.innerHTML=`<tr><th colspan="4">${station.toUpperCase()} DEPARTURES</th></tr>
+<tr><th>Time</th><th>Destination</th><th>Plat</th><th>Status</th></tr>`;
+
+trains.slice(0,10).forEach(train=>{
+const row=document.createElement("tr");
+row.classList.add("expandable");
+
+if(train.destination_name===PREFERRED_TRAIN.destination &&
+train.aimed_departure_time===PREFERRED_TRAIN.aimed_departure_time &&
+train.status.toLowerCase().includes("delay")) row.classList.add("highlight");
+
+row.innerHTML=`<td>${train.aimed_departure_time}</td>
+<td class="destination">${train.destination_name}</td>
+<td>${train.platform||"-"}</td>
+<td class="${train.status==="On time"?"status-on":"status-warn"}">${train.status}</td>`;
+
+row.onclick=()=>loadStops(train.service_timetable.id,row);
+table.appendChild(row);
+});
+
+checkPreferredTrain(trains);
+}
+
+async function loadStops(serviceId,row){
+const next=row.nextSibling;
+if(next && next.classList.contains("stop-details")){next.remove();return;}
+
+const url=`https://transportapi.com/v3/uk/train/service/train/${serviceId}/timetable.json?app_id=${APP_ID}&app_key=${APP_KEY}`;
+const res=await fetch(url);
+const data=await res.json();
+
+const detail=document.createElement("tr");
+detail.classList.add("stop-details");
+detail.innerHTML=`<td colspan="4"><b>Stops:</b><br>${
+data.stops.map(s=>`${s.station_name} ${s.aimed_arrival_time||""}`).join("<br>")
+}</td>`;
+row.after(detail);
+}
+
+function checkPreferredTrain(trains){
+const train=trains.find(t=>t.destination_name===PREFERRED_TRAIN.destination &&
+t.aimed_departure_time===PREFERRED_TRAIN.aimed_departure_time);
+if(train && train.status.toLowerCase().includes("delay"))
+alert("⚠️ Preferred train delayed!");
+}
+
+showDepartures();
+setInterval(showDepartures,30000);
+</script>
+</body>
+</html>
