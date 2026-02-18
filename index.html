@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Train Departures & Journey Planner</title>
+
+<style>
+body {
+    margin: 0;
+    background: black;
+    color: #ffb000;
+    font-family: "Courier New", monospace;
+    text-align: center;
+}
+
+h1, h2 {
+    margin: 10px;
+}
+
+input, button {
+    padding: 8px;
+    font-size: 16px;
+    margin: 5px;
+}
+
+.board {
+    margin-top: 10px;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.header, .row {
+    display: grid;
+    grid-template-columns: 70px 1fr 60px 100px;
+    padding: 6px 0;
+    border-bottom: 1px solid #331f00;
+}
+
+.header {
+    font-weight: bold;
+    border-bottom: 2px solid #ffb000;
+}
+
+.delayed { color: yellow; }
+.cancelled { color: red; }
+</style>
+</head>
+
+<body>
+
+<h1>UK Train Departures</h1>
+
+<!-- API Credentials and Station for Departures -->
+<div>
+    <input id="station" placeholder="Station Code (e.g. EUS)">
+    <input id="appId" placeholder="Your TransportAPI app_id">
+    <input id="appKey" placeholder="Your TransportAPI app_key">
+    <button onclick="loadBoard()">Show Departures</button>
+</div>
+
+<div class="board" id="board"></div>
+
+<hr style="border:1px solid #ffb000; width:90%; margin:20px auto;">
+
+<h2>Journey Planner</h2>
+
+<div>
+    <input id="fromStation" placeholder="From (CRS e.g. EUS)">
+    <input id="toStation" placeholder="To (CRS e.g. MAN)">
+    <input id="journeyDate" type="date">
+    <input id="journeyTime" type="time" value="12:00">
+    <button onclick="planJourney()">Find Trains</button>
+</div>
+
+<div class="board" id="journeyBoard
