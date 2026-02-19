@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Conti Train Board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<style>
+body{background:#000;color:#ffb000;font-family:Courier New}
+.banner{background:#0000ff;color:#ffb000;text-align:center;padding:6px;font-weight:bold}
+table{width:100%;border-collapse:collapse}
+th,td{padding:6px;border-bottom:1px solid #222}
+.destination{color:#00ffff}
+.status-good{color:#00ff00}
+.status-bad{color:#ff0000}
+.expandable{cursor:pointer}
+.expandable:hover{background:#111}
+.stop-details{background:#111;color:#00ffff}
+</style>
+</head>
+
+<body>
+<div class="banner">CONTi TRAIN BOARD</div>
+
+<select id="station">
+  <option value="WLT">Wallington</option>
+  <option value="ZFD">Farringdon</option>
+  <option value="CLJ">Clapham Junction</option>
+  <option value="VIC">London Victoria</option>
+</select>
+
+<button onclick="loadBoard()">Load Board</button>
+
+<table id="board"></table>
+
+<script>
+const API_KEY="YOUR_REAL_CONSUMER_KEY";
+
+async function loadBoard(){
+  const crs=document.getElementById("station").value;
+  const res=await fetch(`https://api.rdm.nationalrail.co.uk/public/darwin/departures/${crs}`,{
+    headers:{ "x-apikey": API_KEY }
+  });
+  const data=await res.json();
+
+  const table=document.getElementById("board");
+  table.innerHTML="<tr><th>Time</th><th>Destination</th><th>Plat</th><th>Status</th></tr>";
+
+  data.services.slice(0,10).forEach(s=>{
+    const row=document.createElement("tr");
+    row.className="expandable";
+    row.innerHTML=`<td>${s.std}</td>
+                   <td class="destination">${s.destination}</td>
+                   <td>${s.platform||"-"}</td>
+                   <td class="${s.etd==='On time'?'status-good':'status-bad'}">${s.etd}</td>`;
+    row.onclick=()=>loadStops(s.rid,row);
+    table.appendChild(row);
+  });
+}
+
+async function loadStops(rid,row){
+  const res=await fetch(`https://api.rdm.nationalrail.co.uk/public/darwin/service/${rid}`,{
+    headers:{ "x-apikey": API_KEY }
+  });
+  const data=await res.json();
+
+  const detail=document.createElement("tr");
+  detail.className="stop-details";
+  detail.innerHTML=`<td colspan="4"><b>Stops:</b><br>${
+    data.stops.map(s=>`${s.locationName} ${s.st}`).join("<br>")
+  }</td>`;
+  row.after(detail);
+}
+
+loadBoard();
+</script>
+</body>
+</html>
